@@ -90,11 +90,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const bootstrapUser = useCallback(async (userId: string) => {
     try {
-      await supabase.rpc("bootstrap_current_user");
+      // Timeout safety — don't block forever
+      await Promise.race([
+        supabase.rpc("bootstrap_current_user"),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 4000)),
+      ]);
     } catch {
       // May fail if DB not set up yet — ignore
     }
-    await fetchRoles(userId);
+    try {
+      await fetchRoles(userId);
+    } catch {
+      setRoles(["guest"]);
+    }
   }, [fetchRoles]);
 
   const refreshRoles = useCallback(async () => {
@@ -106,13 +114,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (IS_DEMO) return; // Skip Supabase in demo mode
 
     let mounted = true;
+    // Safety: never stuck loading more than 8 seconds
+    const safetyTimer = setTimeout(() => { if (mounted) setIsLoading(false); }, 8000);
+
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) await bootstrapUser(session.user.id);
-      setIsLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) await bootstrapUser(session.user.id);
+      } catch {
+        // ignore
+      } finally {
+        if (mounted) setIsLoading(false);
+        clearTimeout(safetyTimer);
+      }
     };
     init();
 
@@ -121,20 +138,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
         setSession(session);
         setUser(session?.user ?? null);
-        if (session?.user) {
-          if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-            await bootstrapUser(session.user.id);
+        try {
+          if (session?.user) {
+            if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+              await bootstrapUser(session.user.id);
+            } else {
+              await fetchRoles(session.user.id);
+            }
           } else {
-            await fetchRoles(session.user.id);
+            setRoles([]);
           }
-        } else {
-          setRoles([]);
+        } catch {
+          setRoles(["guest"]);
+        } finally {
+          if (mounted) setIsLoading(false);
         }
-        setIsLoading(false);
       }
     );
 
-    return () => { mounted = false; subscription.unsubscribe(); };
+    return () => { mounted = false; clearTimeout(safetyTimer); subscription.unsubscribe(); };
   }, [bootstrapUser, fetchRoles]);
 
   const signOut = async () => {
