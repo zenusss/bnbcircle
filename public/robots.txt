@@ -1,0 +1,27 @@
+User-agent: *
+Allow: /
+
+# Disallow private dashboard areas
+Disallow: /app/
+Disallow: /host/
+Disallow: /admin/
+Disallow: /checkout/
+Disallow: /availability/
+
+# Disallow auth pages from indexing
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /reset-password
+
+# Disallow search results with query params (they have noindex meta too)
+Disallow: /search?*
+
+# Allow search landing page (no params)
+Allow: /search$
+
+# Sitemap location
+Sitemap: https://bnb-circle.com/sitemap.xml
+
+# Crawl delay (be kind to server)
+Crawl-delay: 1
