@@ -77,16 +77,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchRoles = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId);
+      // Use SECURITY DEFINER RPC to bypass RLS
+      const { data, error } = await supabase.rpc("get_my_roles");
       if (error) throw error;
-      setRoles((data || []).map((r: any) => r.role as AppRole));
+      const rolesArray = (data as string[] | null) || [];
+      setRoles(rolesArray as AppRole[]);
     } catch {
-      setRoles(["guest"]);
+      // Fallback: try direct query
+      try {
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId);
+        setRoles((data || []).map((r: any) => r.role as AppRole));
+      } catch {
+        setRoles(["guest"] as AppRole[]);
+      }
     }
   }, []);
+
 
   const bootstrapUser = useCallback(async (userId: string) => {
     try {
