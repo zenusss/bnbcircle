@@ -189,7 +189,7 @@ export default function App() {
               {/* ── Admin ── */}
               <Route
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRoute>
                     <AdminLayout />
                   </ProtectedRoute>
                 }
