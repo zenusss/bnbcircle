@@ -296,23 +296,30 @@ export default function AdminListings() {
       {/* ── Table ── */}
       <div className="card-base overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col className="w-10" />
+              <col className="w-[28%]" />
+              <col className="w-[18%]" />
+              <col className="w-[10%]" />
+              <col className="w-[18%]" />
+              <col className="w-[8%]" />
+              <col className="w-[16%]" />
+            </colgroup>
             <thead className="bg-muted/50 border-b border-border">
               <tr>
                 {[
-                  "Image",
+                  "",
                   "Title",
-                  "Host",
-                  "City",
-                  "Type",
-                  "Price/night",
-                  "Reviews",
+                  "Host / City",
+                  "Price",
                   "Status",
+                  "Rev.",
                   "Actions",
                 ].map((h) => (
                   <th
                     key={h}
-                    className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap"
+                    className="text-left px-3 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground"
                   >
                     {h}
                   </th>
@@ -334,105 +341,90 @@ export default function AdminListings() {
                 pageItems.map((listing) => (
                   <tr key={listing.id} className="hover:bg-muted/30 transition-colors">
                     {/* Image */}
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
                       <img
                         src={listing.image}
                         alt={listing.title}
-                        className="w-10 h-10 rounded-lg object-cover shrink-0"
+                        className="w-8 h-8 rounded-lg object-cover shrink-0"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src =
-                            "https://placehold.co/40x40/f0f0f0/999?text=?";
+                            "https://placehold.co/32x32/f0f0f0/999?text=?";
                         }}
                       />
                     </td>
 
                     {/* Title */}
-                    <td className="px-4 py-3 max-w-[180px]">
+                    <td className="px-3 py-3">
                       <button
                         onClick={() => navigate(`/admin/listings/${listing.id}/edit`)}
-                        className="font-medium text-primary hover:underline text-left truncate block max-w-full"
+                        className="font-medium text-primary hover:underline text-left truncate block w-full"
                         title={listing.title}
                       >
                         {listing.title}
                       </button>
+                      <span className="text-xs text-muted-foreground">{PROPERTY_TYPE_LABELS[listing.type] ?? listing.type}</span>
                     </td>
 
-                    {/* Host */}
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                      {listing.host}
-                    </td>
-
-                    {/* City */}
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                      {listing.city}
-                    </td>
-
-                    {/* Type */}
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                      {PROPERTY_TYPE_LABELS[listing.type] ?? listing.type}
+                    {/* Host + City */}
+                    <td className="px-3 py-3">
+                      <div className="truncate text-foreground text-xs font-medium">{listing.host}</div>
+                      <div className="truncate text-muted-foreground text-xs">{listing.city}</div>
                     </td>
 
                     {/* Price */}
-                    <td className="px-4 py-3 font-semibold text-primary whitespace-nowrap">
+                    <td className="px-3 py-3 font-semibold text-primary text-sm">
                       {formatEUR(listing.price)}
                     </td>
 
+                    {/* Status */}
+                    <td className="px-3 py-3">
+                      <select
+                        value={listing.status}
+                        onChange={(e) =>
+                          handleStatusUpdate(listing.id, e.target.value as ListingStatus)
+                        }
+                        className={cn(
+                          "text-xs rounded-full px-2 py-1 border-0 font-medium focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer w-full",
+                          listing.status === "active" && "bg-green-100 text-green-700",
+                          listing.status === "pending_review" && "bg-yellow-100 text-yellow-700",
+                          listing.status === "inactive" && "bg-red-100 text-red-700",
+                          listing.status === "draft" && "bg-gray-100 text-gray-600",
+                        )}
+                      >
+                        <option value="active">Active</option>
+                        <option value="pending_review">Pending</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="draft">Draft</option>
+                      </select>
+                    </td>
+
                     {/* Reviews */}
-                    <td className="px-4 py-3 text-muted-foreground text-center">
+                    <td className="px-3 py-3 text-muted-foreground text-center text-sm">
                       {listing.reviews}
                     </td>
 
-                    {/* Status chip */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={STATUS_CLS[listing.status]}>
-                        {STATUS_LABELS[listing.status]}
-                      </span>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {/* Edit */}
+                    {/* Actions — icon only */}
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-1">
                         <button
                           onClick={() => navigate(`/admin/listings/${listing.id}/edit`)}
-                          className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
+                          className="p-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
                           title="Edit listing"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
-                          Edit
                         </button>
-
-                        {/* View */}
                         <a
                           href={`/listing/${listing.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
+                          className="p-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
                           title="View public listing"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          View
                         </a>
-
-                        {/* Status dropdown */}
-                        <select
-                          value={listing.status}
-                          onChange={(e) =>
-                            handleStatusUpdate(listing.id, e.target.value as ListingStatus)
-                          }
-                          className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-accent/40 transition-colors"
-                          title="Change status"
-                        >
-                          <option value="active">Active</option>
-                          <option value="pending_review">Pending Review</option>
-                          <option value="inactive">Inactive</option>
-                          <option value="draft">Draft</option>
-                        </select>
-
-                        {/* Delete */}
                         <button
                           onClick={() => setDeleteTarget(listing)}
-                          className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                          className="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
                           title="Delete listing"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
