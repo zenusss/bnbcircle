@@ -577,7 +577,8 @@ export function SiteHeader({
   const isHome = location.pathname === "/";
 
   useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 60);
+    const h = () => setScrolled(window.scrollY > 380);
+    h(); // run on mount in case page loads scrolled
     window.addEventListener("scroll", h, { passive: true });
     return () => window.removeEventListener("scroll", h);
   }, []);
@@ -602,15 +603,27 @@ export function SiteHeader({
           </Link>
 
           {/* ── CENTER ── */}
-          {/* Desktop: full search pill */}
-          <div className="hidden md:flex flex-1 items-center justify-center min-w-0 px-2">
-            {(isHome && scrolled) ? <HeaderSearch compact /> : <HeaderSearch />}
+          {/* Desktop: full search pill — hidden at top of home, appears on scroll */}
+          <div
+            className={cn(
+              "hidden md:flex flex-1 items-center justify-center min-w-0 px-2 transition-all duration-300",
+              isHome && !scrolled
+                ? "opacity-0 pointer-events-none scale-95"
+                : "opacity-100 pointer-events-auto scale-100"
+            )}
+          >
+            <HeaderSearch />
           </div>
 
-          {/* Mobile: compact pill that opens fullscreen modal */}
+          {/* Mobile: compact pill that opens fullscreen modal — hidden at top of home */}
           <button
             onClick={() => setMobileSearchOpen(true)}
-            className="md:hidden flex-1 flex items-center gap-2 border border-gray-200 rounded-full px-3 py-2 shadow-sm bg-white min-w-0"
+            className={cn(
+              "md:hidden flex-1 flex items-center gap-2 border border-gray-200 rounded-full px-3 py-2 shadow-sm bg-white min-w-0 transition-all duration-300",
+              isHome && !scrolled
+                ? "opacity-0 pointer-events-none scale-95"
+                : "opacity-100 pointer-events-auto scale-100"
+            )}
           >
             <Search className="w-4 h-4 text-gray-500 shrink-0" />
             <span className="text-xs text-gray-400 truncate">Where to? · Dates · Guests</span>

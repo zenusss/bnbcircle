@@ -22,6 +22,38 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// ─── Image compression util ───────────────────────────────────────────────────
+
+const compressImage = (
+  file: File,
+  maxWidth = 1920,
+  quality = 0.75
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Slide {
@@ -113,6 +145,71 @@ const EMPTY_NEW_SLIDE = {
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
+
+/** Reusable image-upload button with compression + size display */
+function SlideImageUpload({
+  onUpload,
+}: {
+  onUpload: (dataUrl: string, sizeKb: number) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [compressing, setCompressing] = useState(false);
+  const [compressedKb, setCompressedKb] = useState<number | null>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCompressing(true);
+    setCompressedKb(null);
+    try {
+      const dataUrl = await compressImage(file);
+      // base64 size: (dataUrl.length * 3/4) bytes → KB
+      const kb = Math.round((dataUrl.length * 3) / 4 / 1024);
+      setCompressedKb(kb);
+      onUpload(dataUrl, kb);
+    } catch {
+      alert("Failed to compress image.");
+    } finally {
+      setCompressing(false);
+      // reset so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+      />
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={compressing}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-dashed border-border text-xs font-semibold text-foreground hover:border-accent hover:text-accent transition-all disabled:opacity-50"
+      >
+        {compressing ? (
+          <>
+            <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            Compressing…
+          </>
+        ) : (
+          <>
+            📸 Upload image
+          </>
+        )}
+      </button>
+      {compressedKb !== null && !compressing && (
+        <span className="text-[11px] text-emerald-600 font-semibold">
+          ✓ Compressed: {compressedKb} KB
+        </span>
+      )}
+    </div>
+  );
+}
 
 /** Pill toggle switch */
 function ToggleSwitch({
@@ -431,6 +528,17 @@ function AddSlideForm({
               >
                 Test
               </button>
+            </div>
+
+            {/* Upload from device */}
+            <div className="mt-2">
+              <SlideImageUpload
+                onUpload={(dataUrl) => {
+                  update("image_url", dataUrl);
+                  setTestImageUrl(dataUrl);
+                  setImageError(false);
+                }}
+              />
             </div>
 
             {/* Quick-pick chips */}
@@ -805,7 +913,7 @@ export default function AdminSlider() {
 
                 {/* ── Editable fields ── */}
                 <div className="flex-1 space-y-4">
-                  {/* Image URL */}
+                  {/* Image URL + Upload */}
                   <div>
                     <label className="block text-xs font-semibold text-foreground mb-1.5">
                       Image URL
@@ -815,8 +923,13 @@ export default function AdminSlider() {
                       onChange={(e) =>
                         updateSlide(slide.id, "image_url", e.target.value)
                       }
-                      className="input-base text-sm"
+                      className="input-base text-sm mb-2"
                       placeholder="https://images.unsplash.com/..."
+                    />
+                    <SlideImageUpload
+                      onUpload={(dataUrl) =>
+                        updateSlide(slide.id, "image_url", dataUrl)
+                      }
                     />
                   </div>
 
