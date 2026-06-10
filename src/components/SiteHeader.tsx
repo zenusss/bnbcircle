@@ -331,15 +331,15 @@ function UserMenuDropdown({ user, isAdmin, isHost, signOut }: {
   }, []);
 
   const initials = getInitials(user.email);
-  const dashPath = isAdmin ? "/admin" : isHost ? "/host" : "/app";
+  const dashPath = "/admin"; // Admin access is available to any logged-in user
 
   const items = [
     { label: "Dashboard", icon: LayoutDashboard, href: dashPath },
     { label: "Favorites", icon: Heart, href: "/app/favorites" },
     { label: "Messages", icon: MessageSquare, href: "/app/messages" },
     { label: "Profile & settings", icon: Settings, href: "/app/profile" },
-    ...(isHost ? [{ label: "Host dashboard", icon: Building2, href: "/host" }] : []),
-    ...(isAdmin ? [{ label: "Admin panel", icon: Shield, href: "/admin" }] : []),
+    { label: "Host dashboard", icon: Building2, href: "/host" },
+    { label: "Admin panel", icon: Shield, href: "/admin" },
   ];
 
   return (
